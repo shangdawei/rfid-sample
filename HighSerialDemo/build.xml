@@ -1,0 +1,24 @@
+<!--===========================================================================
+  This is the build file for the Pentaho Mantle project.
+  
+  This build file will use the common_build.xml file as the default build
+  process and should only override the tasks that need to differ from
+  the common build file.
+  
+  See common_build.xml for more details
+============================================================================-->
+<project name="build" basedir="." default="build">
+	<description>
+	  Security Report System 2011
+	</description>
+	<target name="clean" description="clean">
+		<delete file="lib/hf.jar" />
+	</target>
+	<target name="build" description="cloud foundation architecture" depends="clean">
+		<jar destfile="lib/hf.jar">
+			<fileset dir="bin">
+				<include name="**/*.*" />
+			</fileset>
+		</jar>
+	</target>
+</project>
