@@ -6,13 +6,19 @@ import java.lang.reflect.Method;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 import org.apache.commons.lang.StringUtils;
+import org.demo.Response;
+import org.demo.Tag;
+import org.demo.CommonUtil;
 
 public class CommonUtil {
-
+	public static final SimpleDateFormat DATE_FORMAT_4_DATABASE = new SimpleDateFormat("yyyyMMddHHmmss");
 	public static List resultSetToList(ResultSet rs, Class cls)
 			throws SQLException, InstantiationException,
 			IllegalAccessException, SecurityException, NoSuchMethodException,
@@ -109,7 +115,7 @@ public class CommonUtil {
 		return value;
 	}
 	/**
-	 * 	¼ÓÃÜ
+	 * 	ï¿½ï¿½ï¿½ï¿½
 	 *  @param s
 	 *  @return
 	 */
@@ -139,7 +145,7 @@ public class CommonUtil {
 		}
 	}
 	/**
-	 * ½âÃÜ
+	 * ï¿½ï¿½ï¿½ï¿½
 	 *  @param s
 	 *  @return
 	 */
@@ -159,7 +165,7 @@ public class CommonUtil {
 	}
 	
 	/**
-	 * byteÊý×é×°³É16½øÖÆ×Ö·û´®
+	 * byteï¿½ï¿½ï¿½ï¿½×°ï¿½ï¿½16ï¿½ï¿½ï¿½ï¿½ï¿½Ö·ï¿½
 	 *  @param data
 	 *  @param off
 	 *  @param length
@@ -175,9 +181,26 @@ public class CommonUtil {
 		}
 		return buf.toString().toUpperCase();
 	}
+	
+	public static String toDHex(byte[] data, int off, int length) {   
+		    // double size, two bytes (hex range) for one byte   
+		    StringBuffer buf = new StringBuffer(data.length * 2);   
+		    for (int i = off; i < length; i++) {   
+		        // don't forget the second hex digit   
+		        if (((int) data[i] & 0xff) < 0x10) {   
+		            buf.append("0");   
+		        }   
+		        buf.append(Long.toString((int) data[i] & 0xff, 16));   
+		        if (i < data.length - 1) {   
+		            buf.append(" ");   
+		        }   
+	     }   
+		    return buf.toString();   
+		}  
+
 
 	/**
-	 * ByteÊý×é×°³É16½øÖÆ×Ö·û´®
+	 * Byteï¿½ï¿½ï¿½ï¿½×°ï¿½ï¿½16ï¿½ï¿½ï¿½ï¿½ï¿½Ö·ï¿½
 	 *  @param data
 	 *  @return
 	 */
@@ -194,21 +217,21 @@ public class CommonUtil {
 	}
 	
 	/**
-	 * ½«16½øÖÆbyteÊý×é×ª³ÉASSICÂëÊý×é
+	 * ï¿½ï¿½16ï¿½ï¿½ï¿½ï¿½byteï¿½ï¿½ï¿½ï¿½×ªï¿½ï¿½ASSICï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	 *  @param hex
 	 *  @return
 	 */
-	public static byte[] hex2Assic(byte[] hex){
+	/*public static byte[] hex2Assic(byte[] hex){
 		String hexStr = toHex(hex);
 		return hexStr.getBytes();
 	}
 	
 	/**
-	 * ½«ASSICÂëÊý×é×ª³É16½øÖÆÊý×é
+	 * ï¿½ï¿½ASSICï¿½ï¿½ï¿½ï¿½ï¿½ï¿½×ªï¿½ï¿½16ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	 *  @param assic
 	 *  @return
 	 */
-	public static byte[] assic2Hex(byte[] assic) throws NumberFormatException , ArrayIndexOutOfBoundsException{
+	/*public static byte[] assic2Hex(byte[] assic) throws NumberFormatException , ArrayIndexOutOfBoundsException{
 		byte [] hex = new byte[assic.length / 2];
 		int j = 0;
 		for(int i = 0 ; i < assic.length ; i += 2){
@@ -220,9 +243,9 @@ public class CommonUtil {
 	
 	public static byte[] str2Hex(String str){
 		return assic2Hex(str.getBytes());
-	}
+	}*/
 	/**
-	 * ÊÇ·ñ·µ»ØÎªAssicÎª0µÄ
+	 * ï¿½Ç·ñ·µ»ï¿½ÎªAssicÎª0ï¿½ï¿½
 	 *  @param assic
 	 *  @return
 	 */
@@ -245,4 +268,81 @@ public class CommonUtil {
 		 }
 		 return 1;
 	 }
+	
+	public static String getDisplayDatetime(Date date){
+		SimpleDateFormat df = new SimpleDateFormat(Tag.DISPLAY_DATE_TIME_FORMAT);
+		return df.format(date);
+	}
+	public static String getDisplayDate(Date date){
+		SimpleDateFormat df = new SimpleDateFormat(Tag.DISPLAY_DATE_FORMAT);
+		return df.format(date);
+	}
+	public static String getDisplayDatetime(String str){
+		return getDisplayDatetime(str2Date(str));
+	}
+	public static Date str2Date(String str){
+		try {
+			return DATE_FORMAT_4_DATABASE.parse(str);
+		} catch (ParseException e) {
+			return null;
+		}
+	}
+	public static String date2Str(Date date){
+		return DATE_FORMAT_4_DATABASE.format(date);
+	}
+	public static void main(String []args) throws SQLException, InstantiationException, IllegalAccessException, ClassNotFoundException{
+		System.out.println(CommonUtil.toHex(new byte[]{(byte)0x80}));
+		Response res = new Response();
+		//me æ³¨é‡Š
+		//res.deprotocol(CommonUtil.str2Hex("030075009D1000109066F60000000000000000000000000008D9"));
+		//System.out.println(new String("A5A5A5A5A205008A94D265130004071304020613000407130403060100813228F9".getBytes()));
+		/*res.deprotocol("A205008A94D265130004071304020613000407130403060100813228F9".getBytes());
+		int numOfCards = ((res.getResult()[0] & 0xFF) << 8);
+		numOfCards |= (res.getResult()[1] & 0xFF);
+		System.out.println(CommonUtil.toHex(res.getResult()) + "," + numOfCards);*/
+		SimpleDateFormat df = new SimpleDateFormat("yyMMddHHmmss");
+		Date now = new Date();
+		System.out.println(df.format(now));
+		String yy = df.format(now).substring(0,2);
+		String dd = df.format(now).substring(4,6);
+		String MM = df.format(now).substring(2,4);
+		String hh = df.format(now).substring(6,8);
+		String mm = df.format(now).substring(8,10);
+		String ss = df.format(now).substring(10,12);
+		String cd = "A5A5A5A5A1"+yy+"00"+dd+MM+hh+"00"+ss+mm;
+		//byte b = new byte();
+		byte[] b = new byte[CommonUtil.str2Hex(cd).length];
+		b=CommonUtil.str2Hex(cd).clone();
+		System.out.println("b="+CommonUtil.toHex(b));
+		
+	}
+
+	public static byte[] assic2Hex(byte[] assic) throws NumberFormatException , ArrayIndexOutOfBoundsException{
+		byte [] hex = new byte[assic.length / 2];
+		int j = 0;
+		for(int i = 0 ; i < assic.length ; i += 2){
+			hex[j++] = (byte) (Integer.parseInt(((char)assic[i]) + "" , 16) * 16 + Integer.parseInt(((char)assic[i + 1]) + "" , 16));
+		}
+		return hex;
+	}
+	
+	public static byte[] str2Hex(String str){
+		return assic2Hex(str.getBytes());
+	}
+	
+	
+	public static boolean gettt(String m){
+		if(m.equals("3"))
+			return true;
+		else
+		    return false;
+	}
+	
+	public static List<Byte> cloneList(List<Byte> arr){
+		List<Byte> list = new ArrayList<Byte>(arr.size());
+		for(Byte b : arr){
+			list.add(b.byteValue());
+		}
+		return list;
+	}
 }
