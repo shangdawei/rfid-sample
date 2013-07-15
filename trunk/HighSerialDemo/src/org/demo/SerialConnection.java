@@ -2,15 +2,23 @@ package org.demo;
 
 //import javax.comm.*;
 
-import java.io.*;
-import java.awt.event.*;
+import gnu.io.CommPortIdentifier;
+import gnu.io.CommPortOwnershipListener;
+import gnu.io.NoSuchPortException;
+import gnu.io.PortInUseException;
+import gnu.io.SerialPort;
+import gnu.io.SerialPortEvent;
+import gnu.io.SerialPortEventListener;
+import gnu.io.UnsupportedCommOperationException;
+
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.TooManyListenersException;
-
-
-//import javax.comm.*;
-import gnu.io.*;
 
 /**
  * A class that handles the details of a serial connection. Reads from one
@@ -18,18 +26,20 @@ import gnu.io.*;
  */
 public class SerialConnection extends Thread implements
 		SerialPortEventListener, CommPortOwnershipListener {
-
+	//private static Logger logger = Logger.getLogger(SerialConnection.class);
 	private SerialParameters parameters;
 	private OutputStream os;
 	private InputStream is;
 	private CommPortIdentifier portId;
 	private SerialPort sPort;;
-	private boolean open;
-	private int timeout = 100;
-	private int loop = 5;
+	private boolean opened;
+	private int timeout = 200;
+	private int loop = 25;
 	private boolean receivedBlocked = false;
+	private boolean plugged = true;
 	private List<List<Byte>> bufferList = new ArrayList<List<Byte>>();
-
+	List<Byte> buffer = new ArrayList<Byte>();
+	private boolean isInterrupt = false;
 	/**
 	 * Creates a SerialConnection object and initilizes variables passed in as
 	 * params.
@@ -47,7 +57,11 @@ public class SerialConnection extends Thread implements
 	 */
 	public SerialConnection(SerialParameters parameters) {
 		this.parameters = parameters;
-		open = false;
+		opened = false;
+	}
+	
+	public void setSerialParameters(SerialParameters parameters){
+		this.parameters = parameters;
 	}
 
 	/**
@@ -123,7 +137,8 @@ public class SerialConnection extends Thread implements
 
 		// Add ownership listener to allow ownership event handling.
 		portId.addPortOwnershipListener(this);
-		open = true;
+		opened = true;
+		plugged = true;
 	}
 
 	/**
@@ -168,7 +183,7 @@ public class SerialConnection extends Thread implements
 	 */
 	public void closeConnection() {
 		// If port is alread closed just return.
-		if (!open) {
+		if (!opened) {
 			return;
 		}
 
@@ -186,14 +201,18 @@ public class SerialConnection extends Thread implements
 			}
 
 			// Close the port.
-			sPort.close();
-
+			try{
+				sPort.close();
+			}catch (Exception e) {
+			}
 			// Remove the ownership listener.
 			portId.removePortOwnershipListener(this);
 		}
-		open = false;
+		opened = false;
 	}
-
+	public void stopRead(){
+		isInterrupt = true;
+	}
 	public static byte[] str2ByteArr(String str) {
 		byte[] b = new byte[str.length() / 2];
 		for (int i = 0; i < str.length() / 2; i++) {
@@ -204,7 +223,7 @@ public class SerialConnection extends Thread implements
 	}
 
 	/**
-	 * ��ȡһ����
+	 * 读取一整条
 	 * 
 	 * @param req
 	 * @return
@@ -212,35 +231,240 @@ public class SerialConnection extends Thread implements
 	 * @throws SerialConnectionException
 	 * @throws ReceivedException
 	 */
-	public byte[] readSingle(byte[] cmd) throws IOException,
-			SerialConnectionException {
-		read(cmd);
-		return getSingleReceived();
-	}
-	
-	public List<byte[]> readMulti(byte[] cmd) throws SerialConnectionException, IOException{
-		read(cmd);
-		return getMultiReveived();
+	public Response readSingle(Request req) throws IOException,
+			SerialConnectionException, ReceivedException {
+		read(req);
+		Response res = new Response();
+		res.deprotocol(getSingleReceived());
+		if (res.getResult() == null)
+			throw new ReceivedException("srs.device.revceived.null");
+		return res;
 	}
 
 	/**
-	 * ��ȡ����ֵ�һ����
+	 * 读取被拆分的一整条
 	 * 
 	 * @param req
 	 * @throws SerialConnectionException
 	 * @throws IOException
-	 */ 
-	private void read(byte[] cmd) throws SerialConnectionException,
+	 */
+	private void read(Request req) throws SerialConnectionException,
 			IOException {
-		if (!open)
+		if (!opened)
+			throw new SerialConnectionException("Serial port was closed!");
+		clearBuffer();
+		//os.write(CommonUtil.hex2Assic(req.protocol()));
+		os.write(req.protocol());
+	}
+	
+	/*
+	 * 发送
+	 */
+
+	public void read(byte[] cmd) throws SerialConnectionException,
+	  IOException {
+		if (!opened)
 			throw new SerialConnectionException("Serial port was closed!");
 		clearBuffer();
 		os.write(cmd);
 	}
+	/*public Response readSeqeratedSingle(Request req)
+			throws SerialConnectionException, IOException, ReceivedException {
+		read(req);
+		List<byte[]> received = getSeperatedReceived();
+		Response res = new Response();
+		List<Response> mutil = new ArrayList<Response>();
+		int index = 0;
+		for (byte[] by : received) {
+			Response r = new Response();
+			if (r.validate(by)) {
+				r.deprotocol(by, index++);
+				mutil.add(r);
+				logger.info(CommonUtil.toHex(r.getResult()));
+			}
+		}
+		int size = mutil.size();
+		switch (size) {
+		case 0:
+			throw new ReceivedException("接受的字串为空或不符合规范！");
+		case 1:
+			return mutil.get(0);
+		default:
+			for (Response r : mutil) {
+				res.add(r);
+			}
+			return res;
+		}
+	}*/
 
+	public Response[] readMutil(Request req, int seperatedNum)
+			throws SerialConnectionException, IOException, ReceivedException {
+		read(req);
+		List<byte[]> received = getSeperatedReceived(seperatedNum);
+		List<Response> mutil = new ArrayList<Response>();
+		for (byte[] by : received) {
+			Response r = new Response();
+			if (r.validate(by)) {
+				r.deprotocol(by);
+				mutil.add(r);
+			}
+		}
+		Response[] reses = new Response[mutil.size()];
+		return (Response[]) mutil.toArray(reses);
+	}
 	
+	public void continueRead(Request req ,int seperatedNum , final ReaderDeviceCallback callback) throws SerialConnectionException, IOException{
+		read(req);
+		continueReceived(seperatedNum, new SerialConnectionCallback() {
+			
+			@Override
+			public void afterRead(List<byte[]> list, int from) {
+				Response [] reses = new Response[list.size() - from];
+				for(int i = from ; i < list.size() ; i++){
+					byte []by = list.get(i);
+					Response r = new Response();
+					if(r.validate(by)){
+						r.deprotocol(by);
+						reses[i - from] = r;
+					}
+				}
+				callback.afterRead(reses, from);
+			}
+		});
+	}
+	
+	public void waitingRead(final ReaderDeviceCallback callback){
+		clearBuffer();
+		waitingReceived(new SerialConnectionCallback() {
+			
+			@Override
+			public void afterRead(List<byte[]> list, int from) {
+				Response [] reses = new Response[list.size() - from];
+				for(int i = from ; i < list.size() ; i++){
+					byte []by = list.get(i);
+					Response r = new Response();
+					if(r.validate(by)){
+						r.deprotocol(by);
+						reses[i - from] = r;
+					}
+				}
+				callback.afterRead(reses, from);
+			}
+		});
+	}
 
-	public byte[] getSingleReceived() {
+	public Response readMulti(byte[] protocol) {
+		return null;
+	}
+
+	/**
+	 * 连续读取数据知道再也收不到数据
+	 * @param seperatedNum
+	 * @return
+	 * @throws ReceivedException
+	 */
+	public List<byte[]> getSeperatedReceived(int seperatedNum)
+			throws ReceivedException {
+		List<byte[]> list = new ArrayList<byte[]>();
+		try {
+			int i = 0;
+			int start = 0;
+			while (i++ < this.loop)
+				try {
+					sleep(this.timeout);
+					if (!receivedBlocked && this.bufferList.size() > start) {
+						start = getMultiReceivedArray(list);
+						i = 0;
+					}
+					if (start < seperatedNum)
+						continue;
+					if(start >= seperatedNum)
+						break;
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+		} catch (NumberFormatException e) {
+			throw new ReceivedException("srs.device.revceived.nonstandard", e);
+		} catch (ArrayIndexOutOfBoundsException e) {
+			throw new ReceivedException("srs.device.revceived.len_error", e);
+		}
+		return list;
+	}
+	
+	public void continueReceived(int seperatedNum , SerialConnectionCallback callback){
+		int i = 0;
+		int start = 0;
+		int from = 0;
+		List<byte[]> list = new ArrayList<byte[]>();
+		while (i++ < this.loop){
+			try {
+				sleep(this.timeout);
+				if (!receivedBlocked) {
+					from = start;
+					start = getMultiReceivedArray(list);
+					callback.afterRead(list, from);
+					i = 0;					
+				}
+				if(start >= seperatedNum)
+					break;
+				if(isInterrupt){
+					break;
+				}
+				if (start < seperatedNum)
+					continue;
+				
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
+		isInterrupt = false;
+	}
+	public void waitingReceived(SerialConnectionCallback callback){
+		List<byte[]> list = new ArrayList<byte[]>();
+		while(true){
+			try{
+				sleep(this.timeout);
+				//logger.info("receivedBlocked : " + receivedBlocked);
+				if (!receivedBlocked) {
+					getMultiReceivedArray(list);
+					callback.afterRead(list, 0);
+					list.clear();
+				}
+				if(isInterrupt){
+					break;
+				}
+			}catch (InterruptedException e) {
+				//logger.error("WaitingReceived",e);
+				System.out.println("WaitingReceived");
+			}
+		}
+		isInterrupt = false;
+	}
+	private int getMultiReceivedArray(List<byte[]> list)
+			throws NumberFormatException, ArrayIndexOutOfBoundsException {
+		int start = list.size();
+		int end = this.bufferList.size();
+		for (int s = 0; s < end; s++) {
+			List<Byte> by = this.bufferList.get(s);
+			byte[] b = new byte[by.size()];
+			for (int i = 0; i < b.length; i++){
+				b[i] = ((Byte) by.get(i)).byteValue();
+			}
+			/*logger.info("RX:" + CommonUtil.toHex(CommonUtil.assic2Hex(b)) + "("
+					+ CommonUtil.toHex(b) + ")");*/
+			//logger.info("RX:" + CommonUtil.toHex(CommonUtil.assic2Hex(b)));
+			//list.add(CommonUtil.assic2Hex(b));
+			list.add(b);
+		}
+		clearBuffer(0 , end);
+		return start + end;
+	}
+	private void clearBuffer(int from , int end){
+		for(int i = 0 ; i < end ; i ++){
+			this.bufferList.remove(from);
+		}
+	}
+	public byte[] getSingleReceived() throws ReceivedException {
 		try {
 			int i = 0;
 			while ((i++) < loop) {
@@ -253,7 +477,9 @@ public class SerialConnection extends Thread implements
 					return getSingleReceivedArray();
 			}
 		} catch (NumberFormatException e) {
-			throw e;
+			throw new ReceivedException("srs.device.revceived.nonstandard", e);
+		} catch (ArrayIndexOutOfBoundsException e) {
+			throw new ReceivedException("srs.device.revceived.len_error", e);
 		}
 		return null;
 		// logger.info(CommonUtil.toHex(CommonUtil.assic2Hex(CommonUtil.str2Hex("30303031363330303030303131303130313031303130313031303130313031303130313031303130313031303130313031464538"))));
@@ -261,17 +487,25 @@ public class SerialConnection extends Thread implements
 		// CommonUtil.assic2Hex(CommonUtil.str2Hex("30303031363330303030303131303130313031303130313031303130313031303130313031303130313031303130313031464538"));
 	}
 
-	public List<byte[]> getMultiReveived(){
-		int i = 0 ;
-		while((i ++) < loop){
-			try {
-				sleep(timeout);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
+	/*public List<byte[]> getSeperatedReceived() throws ReceivedException {
+		try {
+			int i = 0;
+			while ((i++) < loop) {
+				try {
+					sleep(timeout);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
 			}
+			return getMultiReceivedArray();
+		} catch (NumberFormatException e) {
+			throw new ReceivedException("接受的字串不符合规范(" + e.getLocalizedMessage()
+					+ ")", e);
+		} catch (ArrayIndexOutOfBoundsException e) {
+			throw new ReceivedException("接受的字串长度不正确(" + e.getLocalizedMessage()
+					+ ")", e);
 		}
-		return getMultiReveivedArray();
-	}
+	}*/
 
 	private byte[] getSingleReceivedArray() throws NumberFormatException,
 			ArrayIndexOutOfBoundsException {
@@ -280,21 +514,35 @@ public class SerialConnection extends Thread implements
 		for (int i = 0; i < list.size(); i++) {
 			by[i] = list.get(i);
 		}
+		/*logger.info("RX:" + CommonUtil.toHex(CommonUtil.assic2Hex(by)) + "("
+				+ CommonUtil.toHex(by) + ")");*/
+		
+		//logger.info("RX:" + CommonUtil.toHex(CommonUtil.assic2Hex(by)));
+		//return CommonUtil.assic2Hex(by);
 		return by;
 	}
-	
-	private List<byte[]> getMultiReveivedArray(){
-		List<byte[]> list = new ArrayList<byte[]>();
-		for(List<Byte> l : bufferList){
-			byte []by = new byte[l.size()];
-			for(int i = 0 ; i < l.size() ; i ++){
-				by[i] = l.get(i);
-			}
-			list.add(by);
-		}
-		return list;
-	}
 
+	private List<byte[]> getMultiReceivedArray() throws NumberFormatException,
+			ArrayIndexOutOfBoundsException {
+		List<byte[]> list = new ArrayList<byte[]>();
+		bufferList.add(new ArrayList<Byte>());
+		for (List<Byte> by : bufferList) {
+			byte[] b = new byte[by.size()];
+			for (int i = 0; i < b.length; i++)
+				b[i] = by.get(i);
+			//logger.info("RX:" + CommonUtil.toHex(CommonUtil.assic2Hex(b)) + "("
+					//+ CommonUtil.toHex(b) + ")");
+			//list.add(CommonUtil.assic2Hex(b));
+			list.add(b);
+		}
+		// list.add(CommonUtil.assic2Hex(new
+		// byte[]{0x30,0x30,0x30,0x32,0x36,0x30,0x30,0x30,0x38,0x35,0x41,0x33}));
+		// list.add(CommonUtil.assic2Hex(new
+		// byte[]{0x30,0x30,0x30,0x32,0x36,0x32,0x33,0x41,0x44,0x30,0x32,0x36}));
+		// list.add(new byte[]{0x00,0x04,0x62,0x00,0x22,0x33,0x00,0x00});
+		return list;
+
+	}
 
 	/**
 	 * Send a one second break signal.
@@ -308,8 +556,8 @@ public class SerialConnection extends Thread implements
 	 * 
 	 * @return true if port is open, false if port is closed.
 	 */
-	public boolean isOpen() {
-		return open;
+	public boolean isOpened() {
+		return opened;
 	}
 
 	/**
@@ -322,39 +570,77 @@ public class SerialConnection extends Thread implements
 	@SuppressWarnings("unused")
 	public void serialEvent(SerialPortEvent e) {
 		// Create a StringBuffer and int to receive input data.
-
-		List<Byte> buffer = new ArrayList<Byte>();
-		int n = 1;
-		// Determine type of event.
-		switch (e.getEventType()) {
-
-		// Read data until -1 is returned. If \r is received substitute
-		// \n for correct newline handling.
-		case SerialPortEvent.DATA_AVAILABLE:
-			receivedBlocked = true;
-			while (n > 0) {
-				try {
-					byte[] b = new byte[1];
-					n = is.read(b, 0, 1);
-					if (n > 0 ) {
-						buffer.add(b[0]);
+			
+			int n = 1;
+			// Determine type of event.
+			switch (e.getEventType()) {
+	
+			// Read data until -1 is returned. If \r is received substitute
+			// \n for correct newline handling.
+			case SerialPortEvent.DATA_AVAILABLE:
+				receivedBlocked = true;
+				
+				while (n > 0) {
+					try {
+						byte[] b = new byte[1];
+						if (is.available() <= 0)
+							break;
+						n= is.read(b,0,1);
+						
+						//n= is.read(b);
+						if (n >0) {
+							buffer.add(b[0]);	
+						}
+					} catch (IOException ie) {
+						plugged = false;
+						//if(readerDeviceListener != null)
+							//readerDeviceListener.plugOff();
+						System.exit(-1);
+						break;
 					}
-				} catch (IOException ie) {
-					ie.printStackTrace();
+				}
+				if(!buffer.isEmpty()){
+					appendBuffer2List();
+				}
+				receivedBlocked = false;
+				break;
+			case SerialPortEvent.OUTPUT_BUFFER_EMPTY:
+				//logger.info("SerialPortEvent.OUTPUT_BUFFER_EMPTY");
+				break;
+			// If break event append BREAK RECEIVED message.
+			case SerialPortEvent.BI:
+				// messageAreaIn.append("\n--- BREAK RECEIVED ---\n");
+				break;
+			}
+	}
+	
+	private void appendBuffer2List(){
+		int LEN = 33;
+		int DLEN = 4;
+			while(true){
+				int s = 0 ;
+				int n =0, m = 0;
+				n = CommonUtil.toHex(buffer).indexOf("A5A5A5A5");
+				m = n/2;
+	            if(buffer.isEmpty()){
+	            	break;
+	            }
+				if(n<0 || (buffer.size()-m)<LEN ){
+					break;
+				}
+				
+				List<Byte> l = CommonUtil.cloneList(buffer.subList(m + DLEN, LEN + m));
+				System.out.println("RX:" + CommonUtil.toHex(l));
+				bufferList.add(l);
+				for(int i = 0 ; i < LEN + m; i++){
+					buffer.remove(s);
 				}
 			}
-			bufferList.add(buffer);
-			receivedBlocked = false;
-			break;
-
-		// If break event append BREAK RECEIVED message.
-		case SerialPortEvent.BI:
-			// messageAreaIn.append("\n--- BREAK RECEIVED ---\n");
-			break;
-		}
-
 	}
-
+	
+	public byte[] getRes(byte[] by){
+		return by;
+	}
 	private void clearBuffer() {
 		if (!bufferList.isEmpty()) {
 			bufferList.clear();
@@ -409,5 +695,17 @@ public class SerialConnection extends Thread implements
 			}
 		}
 	}
-
+	public synchronized int getSubBufferList(int from,List<List<Byte>> list){
+		synchronized (bufferList) {
+			int index = bufferList.size();
+			list = bufferList.subList(from, index);
+			return index;
+		}
+	}
+	/*public void addReaderDeviceListener(ReaderDeviceListener listener){
+		this.readerDeviceListener = listener;
+	}
+	public void removeReaderDeviceListener(ReaderDeviceListener listener){
+		this.readerDeviceListener = null;
+	}*/
 }
