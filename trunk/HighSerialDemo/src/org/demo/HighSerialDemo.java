@@ -7,8 +7,6 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 
-import javax.swing.SwingWorker;
-
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
@@ -112,7 +110,7 @@ public class HighSerialDemo {
 		btnConnect.addSelectionListener(new SelectionAdapter() {
 			@Override
 			public void widgetSelected(SelectionEvent e) {
-				if(btnConnect.getText().equals("连接")){
+				if(btnConnect.getText().equals("杩炴帴")){
 					String portName = comboPortName.getText();
 					int baudRate = Integer.parseInt(comboBaudRate.getText());
 					conn = new SerialConnection(new SerialParameters(portName, baudRate));
@@ -126,13 +124,21 @@ public class HighSerialDemo {
 					}
 					try {
 						conn.openConnection();
-						btnConnect.setText("断开");
+						try {
+							FileWriter fileWriter = new FileWriter("db.txt" ,true);
+							out = new BufferedWriter(fileWriter);
+						} catch (IOException e2) {
+							MessageDialog.openError(shlSerialDemohigh, "Error", e2.getLocalizedMessage());
+							return;
+						}
+						new Thread(readWorker).start();
+						btnConnect.setText("鏂紑");
 					} catch (SerialConnectionException e1) {
 						MessageDialog.openError(shlSerialDemohigh, "Error", e1.getLocalizedMessage());
 					}
 					
 				}else{
-					btnConnect.setText("连接");
+					btnConnect.setText("杩炴帴");
 					if(conn != null )
 						conn.closeConnection();
 					if(out != null)
@@ -157,82 +163,77 @@ public class HighSerialDemo {
 		GridData gd_composite = new GridData(SWT.FILL, SWT.CENTER, false, false, 1, 1);
 		gd_composite.heightHint = 33;
 		composite.setLayoutData(gd_composite);
-		
-		btnRead = new Button(composite, SWT.NONE);
-		btnRead.addSelectionListener(new SelectionAdapter() {
-			@Override
-			public void widgetSelected(SelectionEvent e) {
-				if(btnRead.getText().equals("开始读卡")){
-					read = true;
-					new Thread(readWorker).start();
-					
-				}else{
-					read = false;
-				}
-			}
-		});
-		btnRead.setText("\u5F00\u59CB\u8BFB\u5361");
 
 	}
+	
+	
 	private Runnable readWorker = new Runnable() {
 		
 		@Override
 		public void run() {
 			try {
-					new Thread(){
-						public void run(){
-							if(!shlSerialDemohigh.getDisplay().isDisposed()){
-								shlSerialDemohigh.getDisplay().syncExec(new Runnable() {
-									
-									@Override
-									public void run() {
-										btnRead.setText("停止读卡");
-									}
-								});
+				conn.waitingRead(new ReaderDeviceCallback(){
+
+					@Override
+					public void afterRead(Response[] res, int from) {
+						for(Response r : res){
+
+							String status = CommonUtil.toHex(r.getStatus());
+							if(status.equals("A1")){
+								appendNewSession();
+								SimpleDateFormat df = new SimpleDateFormat("yyMMddHHmmss");
+								Date now = new Date();
+								String nowdate = df.format(now);
+								String yy = nowdate.substring(0,2);
+								String dd = nowdate.substring(4,6);
+								String MM = nowdate.substring(2,4);
+								String hh = nowdate.substring(6,8);
+								String mm = nowdate.substring(8,10);
+								String ss = nowdate.substring(10,12);
+								String addnum = "0000000000000000000000000000";
+								CRC16 crc16 = new CRC16();
+								String routt = r.getResultString();
+								String cd = "A5A5A5A5A1"+yy+"00"+dd+MM+hh+"00"+ss+mm+addnum+routt + CommonUtil.toHex(crc16.getCrcByte(CommonUtil.str2Hex(yy+"00"+dd+MM+hh+"00"+ss+mm+addnum+routt)));
+								byte[] b = new byte[CommonUtil.str2Hex(cd).length];
+								b=CommonUtil.str2Hex(cd).clone();
+                                try {
+                                	System.out.println("TX: " + CommonUtil.toHex(b));
+									conn.read(b);
+								} catch (SerialConnectionException e) {
+									// TODO Auto-generated catch block
+									e.printStackTrace();
+								} catch (IOException e) {
+									// TODO Auto-generated catch block
+									e.printStackTrace();
+								}
+								break;
+								
 							}
-							
-						}
-					}.start();
-					while(read){
-						if(check()){
-							if(searchCards()){
-								readCards();
+							if(!r.checkCrc()){
+								System.out.println("CRC Error for");
+								continue;
 							}
-						}else{
-							read = false;
+							final Tag tag = new Tag(r.getResult());
 							new Thread(){
 								public void run(){
 									if(!shlSerialDemohigh.getDisplay().isDisposed()){
-										shlSerialDemohigh.getDisplay().syncExec(new Runnable() {
-											
+										shlSerialDemohigh.getDisplay().syncExec(new Runnable() {	
 											@Override
 											public void run() {
-												MessageDialog.openError(shlSerialDemohigh, "Error", "RFID自检不成功！");
+												text.append("Session: "+tag.getRouter()+"-"+tag.getRandoms()+"\n");
+												text.append("From: "+tag.getDisplayDatetime()+"\n");
+												text.append("To: "+tag.getStoptime()+"\n");
+												text.append("Card: "+tag.getId()+"\n\n");
 											}
 										});
 									}
-									
 								}
 							}.start();
 						}
+						
 					}
-				/*}else{
-					new Thread(){
-						public void run(){
-							if(!shlSerialDemohigh.getDisplay().isDisposed()){
-								shlSerialDemohigh.getDisplay().syncExec(new Runnable() {
-									
-									@Override
-									public void run() {
-										MessageDialog.openError(shlSerialDemohigh, "Error", "RFID自检不成功！");
-									}
-								});
-							}
-							
-						}
-					}.start();
 					
-				}*/
+				});
 			} catch (final Exception e1) {
 				new Thread(){
 					public void run(){
@@ -250,27 +251,30 @@ public class HighSerialDemo {
 				}.start();
 				
 			}
-			new Thread(){
-				public void run(){
-					if(!shlSerialDemohigh.getDisplay().isDisposed()){
-						shlSerialDemohigh.getDisplay().syncExec(new Runnable() {
-							
-							@Override
-							public void run() {
-								btnRead.setText("\u5F00\u59CB\u8BFB\u5361");
-							}
-						});
-					}
-					
-				}
-			}.start();
-			insertCards();
+			
 		}
 	};
-	private Button btnRead;
+	private void appendNewSession(){
+		new Thread(){
+			public void run(){
+				if(!shlSerialDemohigh.getDisplay().isDisposed()){
+					shlSerialDemohigh.getDisplay().syncExec(new Runnable() {	
+						@Override
+						public void run() {
+							text.append("Create new session \n");
+
+						}
+					});
+				}
+				
+			}
+		}.start();
+	}
+	//private Button btnRead;
 	private Button btnConnect;
 	
-	private boolean check() throws IOException, SerialConnectionException{
+	
+	/*private boolean check() throws IOException, SerialConnectionException{
 		byte[] r1 = conn.readSingle(new byte[]{0x02,0x0B,0x0F});
 		if(r1 == null)
 			return false;
@@ -287,14 +291,43 @@ public class HighSerialDemo {
 		if(CommonUtil.toHex(r).equalsIgnoreCase("03000400"))
 			return true;
 		return false;
-	}
-	private boolean readCards() throws IOException, SerialConnectionException{
+	}*/
+	
+	/*private boolean readCards() throws IOException, SerialConnectionException{
+		System.out.println("杩涘叆鏂规硶");
+		Response[] res = conn.getRead();
+		for(Response r : res){
+			System.out.println("r==="+r.getResult());
+			final Tag tag = new Tag(r.getResult());
+			new Thread(){
+				public void run(){
+					if(!shlSerialDemohigh.getDisplay().isDisposed()){
+						shlSerialDemohigh.getDisplay().syncExec(new Runnable() {
+							
+							@Override
+							public void run() {
+								text.append(tag.getDisplayDatetime() + ": " + tag.getId());
+							}
+						});
+					}
+				}
+			}.start();
+			if(!r.checkCrc()){
+				text.append("鏈夎!");
+			}
+		}
+		return true;
+		
+	}*/
+	
+	/*private boolean readCards() throws IOException, SerialConnectionException{
 		java.util.List<byte[]> r = conn.readMulti((new byte[]{0x01,0x03}));
 		if(r == null || r.isEmpty())
 			return false;
 		if(CommonUtil.toHex(r.get(0)).equalsIgnoreCase("0101"))
 			return false;
 		for(byte [] b : r){
+			System.out.println("r=="+CommonUtil.toHex(r.get(0)));
 			final String [] item = new String[]{CommonUtil.toHex(b) , dateformat.format(new Date())};
 			list.add(item);
 			new Thread(){
@@ -316,7 +349,7 @@ public class HighSerialDemo {
 		}
 		return true;
 		
-	}
+	}*/
 	private boolean insertCards(){
 		try {
 			for(String[] strs : list){
