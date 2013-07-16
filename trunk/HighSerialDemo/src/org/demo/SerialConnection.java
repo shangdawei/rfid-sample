@@ -615,7 +615,7 @@ public class SerialConnection extends Thread implements
 	}
 	
 	private void appendBuffer2List(){
-		int LEN = 33;
+		int LEN = 37;
 		int DLEN = 4;
 			while(true){
 				int s = 0 ;
