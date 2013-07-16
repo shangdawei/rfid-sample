@@ -14,6 +14,8 @@ public class Tag {
 	public static final String DISPLAY_DATE_FORMAT = "yyyy-MM-dd HH:mm";//巡更棒时间去掉秒
 	private static final int EPC_LEN = 6;
 	private static final int TIME_LEN = 6;
+	private static final int MODEL1_LEN = 2;
+	private static final int MODEL2_LEN = 2;
 	private static final int ROUTER_LEN = 2;
 	private static final int RANDOMS_LEN = 2;
 
@@ -22,7 +24,7 @@ public class Tag {
 	public static final int TYPE_EVENT = 3;
 	private byte [] data;
 	public Tag(byte[] data){
-		if(data.length != EPC_LEN + TIME_LEN + TIME_LEN + ROUTER_LEN + RANDOMS_LEN + 4)
+		if(data.length != EPC_LEN + TIME_LEN + TIME_LEN + MODEL1_LEN +MODEL2_LEN + ROUTER_LEN + RANDOMS_LEN + 4)
 			throw new IllegalArgumentException("Incorrect length of data");
 		this.data = data;
 		calc();
@@ -60,6 +62,11 @@ public class Tag {
 			stoptime[i+4] = data[EPC_LEN+TIME_LEN+9+i];
 		for(int i = 0; i < 1 ; i++)//获取秒
 			stoptime[i+5] = data[EPC_LEN+TIME_LEN+8+i];
+		//4为协议中的时间保留位和星期
+		for(int i = 0; i< 2; i++)
+			model1[i] = data[EPC_LEN+TIME_LEN*2+4];
+		for(int i = 0; i< 2; i++)
+			model2[i] = data[EPC_LEN+TIME_LEN*2+MODEL2_LEN+4];
 		
 		for(int i = 0 ; i < ROUTER_LEN ; i ++){
 			router[i] = data[EPC_LEN+TIME_LEN*2+4+i];
@@ -112,6 +119,15 @@ public class Tag {
 			return null ;
 		}
 	}
+	
+	public String getModel1(){
+		return CommonUtil.toHex(model1);
+	}
+	
+	public String getModel2(){
+		return CommonUtil.toHex(model2);
+	}
+	
 	public String getRouter(){
 		return CommonUtil.toHex(router);
 	}
@@ -121,6 +137,8 @@ public class Tag {
 	private byte[] id = new byte[EPC_LEN];
 	private byte[] time = new byte[TIME_LEN];
 	private byte[] stoptime = new byte[TIME_LEN];
+	private byte[] model1 = new byte[MODEL1_LEN];
+	private byte[] model2 = new byte[MODEL2_LEN];
 	private byte[] router = new byte[ROUTER_LEN];
 	private byte[] randoms = new byte[RANDOMS_LEN];
 	

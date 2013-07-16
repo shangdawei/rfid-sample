@@ -44,7 +44,7 @@ public class Response extends SerialProtocolBase
   }
   public void deprotocol(byte[] protocol, int index)
   {
-    if ((protocol == null) || (protocol.length < 16))
+    if ((protocol == null) || (protocol.length < 19))
       return;
     this.protocol = protocol;
     this.crc = getCrcByte(protocol);
@@ -55,12 +55,18 @@ public class Response extends SerialProtocolBase
     //if ((CommonUtil.byteCompare(this.status, SEND_CRC_ERROR) > 0) || (CommonUtil.byteCompare(this.status, PATROL_AND_TRANS_ERROR) > 0))   	
     	//this.result = getResultByte(protocol, 21);
    // else
-    if(CommonUtil.toHex(status).equals("A1")){
+    if(CommonUtil.toHex(status).equals("B1")){
     	this.result = getResultByte2(protocol, 4);
-    	this.resultcrc = getResultCrc(protocol, 26);
-    }else if(CommonUtil.toHex(status).equals("A2")){
-    	this.result = getResultByte(protocol, 26);
-    	this.resultcrc = getResultCrc(protocol, 26);
+    	this.resultcrc = getResultCrc(protocol, 30);
+    }else if(CommonUtil.toHex(status).equals("B2")){
+    	this.result = getResultByte(protocol, 30);
+    	this.resultcrc = getResultCrc(protocol, 30);
+    }else if(CommonUtil.toHex(status).equals("B3")){
+    	this.result = getResultByte(protocol, 30);
+    	this.resultcrc = getResultCrc(protocol, 30);
+    }else if(CommonUtil.toHex(status).equals("B4")){
+    	this.result = getResultByte(protocol, 30);
+    	this.resultcrc = getResultCrc(protocol, 30);
     }
       //this.result = getResultByte(protocol, getDataLen(c , serial));
     //calcComplement(protocol);

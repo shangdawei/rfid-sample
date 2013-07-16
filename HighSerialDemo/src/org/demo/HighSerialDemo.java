@@ -23,6 +23,7 @@ import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
+import org.eclipse.swt.widgets.Spinner;
 
 public class HighSerialDemo {
 	SimpleDateFormat dateformat=new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
@@ -78,7 +79,7 @@ public class HighSerialDemo {
 	 */
 	protected void createContents() {
 		shlSerialDemohigh = new Shell();
-		shlSerialDemohigh.setSize(450, 414);
+		shlSerialDemohigh.setSize(450, 468);
 		shlSerialDemohigh.setText("Serial Demo(High)");
 		shlSerialDemohigh.setLayout(new GridLayout(1, false));
 		
@@ -153,15 +154,80 @@ public class HighSerialDemo {
 		});
 		btnConnect.setText("\u8FDE\u63A5");
 		
+		group_1 = new Group(shlSerialDemohigh, SWT.NONE);
+		GridData gd_group_1 = new GridData(SWT.LEFT, SWT.CENTER, false, false, 1, 1);
+		gd_group_1.widthHint = 425;
+		gd_group_1.heightHint = 49;
+		group_1.setLayoutData(gd_group_1);
+		
+		lblTray = new Label(group_1, SWT.NONE);
+		lblTray.setBounds(20, 20, 24, 17);
+		lblTray.setText("托盘");
+		
+		spinnerTimeout = new Spinner(group_1, SWT.BORDER);
+		spinnerTimeout.setBounds(188, 17, 47, 23);
+		
+		lblTimeout = new Label(group_1, SWT.NONE);
+		lblTimeout.setBounds(158, 20, 24, 17);
+		lblTimeout.setText("时间");
+		
+		comboDirection = new Combo(group_1, SWT.NONE);
+		comboDirection.setBounds(324, 17, 56, 25);
+		comboDirection.setItems(new String[] {"+x", "-x", "+y", "-y","+z","-z"});
+		
+		btnSetupTime = new Button(group_1, SWT.NONE);
+		btnSetupTime.setBounds(241, 15, 35, 27);
+		btnSetupTime.setText("设置");
+		
+		textTrayAddress = new Text(group_1, SWT.BORDER);
+		textTrayAddress.setBounds(50, 17, 83, 23);
+		
+		Label lblDirection = new Label(group_1, SWT.NONE);
+		lblDirection.setBounds(295, 20, 29, 17);
+		lblDirection.setText("方向");
+		
+		btnSetDirection = new Button(group_1, SWT.NONE);
+		btnSetDirection.setText("设置");
+		btnSetDirection.setBounds(386, 15, 35, 27);
+		btnSetupTime.addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent e) {
+				String trayaddress = textTrayAddress.getText();
+				System.out.println("trayaddress:"+trayaddress);
+				if(!btnSetupTime.getText().equals("连接")||!trayaddress.trim().equals("")){
+					//String trayaddress = textTrayAddress.getText();
+					System.out.println("trayaddress=:"+trayaddress);
+					String timeout = spinnerTimeout.getText();
+					String direction = comboDirection.getText();
+					String addnum = "00000000000000000000000000000000000000000000000000";
+					CRC16 crc16 = new CRC16();
+					String gettimeout = "A5A5A5A5B3"+timeout+addnum+trayaddress+"0000"+CommonUtil.toHex(crc16.getCrcByte(CommonUtil.str2Hex("A5A5A5A5B3"+timeout+addnum+trayaddress+"0000")));
+					byte[] setup = new byte[gettimeout.length()];
+					try {
+						conn.read(setup);
+					} catch (SerialConnectionException e1) {
+						// TODO Auto-generated catch block
+						e1.printStackTrace();
+					} catch (IOException e1) {
+						// TODO Auto-generated catch block
+						e1.printStackTrace();
+					}
+					
+				}else{
+					MessageDialog.openError(shlSerialDemohigh, "Error", "请连接串口！");
+				}
+			}
+		});
+		
 		text = new Text(shlSerialDemohigh, SWT.BORDER | SWT.V_SCROLL | SWT.MULTI);
-		GridData gd_text = new GridData(SWT.FILL, SWT.FILL, true, false, 1, 1);
+		GridData gd_text = new GridData(SWT.FILL, SWT.FILL, true, false, 1, 2);
 		gd_text.heightHint = 275;
 		text.setLayoutData(gd_text);
 		
 		Composite composite = new Composite(shlSerialDemohigh, SWT.NONE);
 		composite.setLayout(new GridLayout(1, false));
 		GridData gd_composite = new GridData(SWT.FILL, SWT.CENTER, false, false, 1, 1);
-		gd_composite.heightHint = 33;
+		gd_composite.heightHint = 37;
 		composite.setLayoutData(gd_composite);
 
 	}
@@ -179,7 +245,7 @@ public class HighSerialDemo {
 						for(Response r : res){
 
 							String status = CommonUtil.toHex(r.getStatus());
-							if(status.equals("A1")){
+							if(status.equals("B1")){
 								appendNewSession();
 								SimpleDateFormat df = new SimpleDateFormat("yyMMddHHmmss");
 								Date now = new Date();
@@ -190,10 +256,10 @@ public class HighSerialDemo {
 								String hh = nowdate.substring(6,8);
 								String mm = nowdate.substring(8,10);
 								String ss = nowdate.substring(10,12);
-								String addnum = "0000000000000000000000000000";
+								String addnum = "000000000000000000000000000000000000";
 								CRC16 crc16 = new CRC16();
 								String routt = r.getResultString();
-								String cd = "A5A5A5A5A1"+yy+"00"+dd+MM+hh+"00"+ss+mm+addnum+routt + CommonUtil.toHex(crc16.getCrcByte(CommonUtil.str2Hex(yy+"00"+dd+MM+hh+"00"+ss+mm+addnum+routt)));
+								String cd = "A5A5A5A5B1"+yy+"00"+dd+MM+hh+"00"+ss+mm+addnum+routt + CommonUtil.toHex(crc16.getCrcByte(CommonUtil.str2Hex(yy+"00"+dd+MM+hh+"00"+ss+mm+addnum+routt)));
 								byte[] b = new byte[CommonUtil.str2Hex(cd).length];
 								b=CommonUtil.str2Hex(cd).clone();
                                 try {
@@ -223,6 +289,8 @@ public class HighSerialDemo {
 												text.append("Session: "+tag.getRouter()+"-"+tag.getRandoms()+"\n");
 												text.append("From: "+tag.getDisplayDatetime()+"\n");
 												text.append("To: "+tag.getStoptime()+"\n");
+												text.append("Model-1："+Integer.parseInt(tag.getModel1())+"\n");
+												text.append("Model-2："+Integer.parseInt(tag.getModel2())+"\n");
 												text.append("Card: "+tag.getId()+"\n\n");
 											}
 										});
@@ -272,6 +340,14 @@ public class HighSerialDemo {
 	}
 	//private Button btnRead;
 	private Button btnConnect;
+	private Group group_1;
+	private Label lblTray;
+	private Spinner spinnerTimeout;
+	private Label lblTimeout;
+	private Combo comboDirection;
+	private Button btnSetupTime;
+	private Text textTrayAddress;
+	private Button btnSetDirection;
 	
 	
 	/*private boolean check() throws IOException, SerialConnectionException{

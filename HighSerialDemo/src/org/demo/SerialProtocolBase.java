@@ -66,7 +66,7 @@ public abstract class SerialProtocolBase {
 	    return (lenByte[0] << 8) + lenByte[1];
 	  }
 	  protected byte[] getCrcByte(byte[] protocol) {//获得校验Crc
-	    return new byte[] { protocol[27], protocol[28] };
+	    return new byte[] { protocol[31], protocol[32] };
 	  }
 	  protected byte[] getCMDByte(byte[] protocol) {
 	    if (!validate(protocol))
@@ -75,7 +75,7 @@ public abstract class SerialProtocolBase {
 	  }
 
 	  protected boolean validate(byte[] protocol) {
-	    return protocol.length > 26;
+	    return protocol.length > 30;
 	  }
 
 }
