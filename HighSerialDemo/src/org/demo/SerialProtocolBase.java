@@ -68,6 +68,9 @@ public abstract class SerialProtocolBase {
 	  protected byte[] getCrcByte(byte[] protocol) {//获得校验Crc
 	    return new byte[] { protocol[31], protocol[32] };
 	  }
+	  protected byte[] getTrayByte(byte[] protocol){//获得托盘地址
+		  return new byte[]{protocol[27],protocol[28]};
+	  }
 	  protected byte[] getCMDByte(byte[] protocol) {
 	    if (!validate(protocol))
 	      return null;

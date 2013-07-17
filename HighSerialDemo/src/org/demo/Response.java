@@ -9,8 +9,7 @@ public class Response extends SerialProtocolBase
   private byte[] result;
   private byte[] resultcrc;
  // private byte[] complement;
-  private String tmpserial;
-  
+  private byte[] tray;
 
   public byte[] getCrc()
   {
@@ -29,12 +28,10 @@ public class Response extends SerialProtocolBase
 	  return this.resultcrc;
   }
   
-  public void setTmpserial(String tmpserial){
-	  this.tmpserial = tmpserial;
+  public byte[] getTray(){
+	  return this.tray;
   }
-  public String getTmpserial(){
-	  return this.tmpserial;
-  }
+  
   public String getResultString(){
 	  String str = CommonUtil.toHex(result);
 	  if(this.length % 2 != 0){//數據長度不為偶數
@@ -49,6 +46,7 @@ public class Response extends SerialProtocolBase
     this.protocol = protocol;
     this.crc = getCrcByte(protocol);
     this.status = getStatusByte(protocol);
+    this.tray = getTrayByte(protocol);
    // this.tmpserial = CommonUtil.toHex(getSerialByte(protocol));
    
    // CommandManager.Command c = this.cm.getCommand(this.status);
@@ -56,7 +54,7 @@ public class Response extends SerialProtocolBase
     	//this.result = getResultByte(protocol, 21);
    // else
     if(CommonUtil.toHex(status).equals("B1")){
-    	this.result = getResultByte2(protocol, 4);
+    	this.result = getResultByte2(protocol, 2);
     	this.resultcrc = getResultCrc(protocol, 30);
     }else if(CommonUtil.toHex(status).equals("B2")){
     	this.result = getResultByte(protocol, 30);

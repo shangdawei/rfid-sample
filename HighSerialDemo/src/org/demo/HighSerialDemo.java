@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.swt.SWT;
@@ -36,6 +37,10 @@ public class HighSerialDemo {
 	java.util.List<String[]> list = new ArrayList<String[]>();
 	private Combo comboPortName;
 	private Combo comboBaudRate;
+	private Combo comboTray;
+	private String[] TrayNames;
+	private ArrayList<String> tmpTray = new ArrayList<String>();
+
 	/**
 	 * Launch the application.
 	 * @param args
@@ -164,7 +169,13 @@ public class HighSerialDemo {
 		lblTray.setBounds(20, 20, 24, 17);
 		lblTray.setText("托盘");
 		
+		comboTray = new Combo(group_1, SWT.NONE);
+		comboTray.setBounds(51, 17, 88, 25);
+		//List<String> tmpTray = new ArrayList<String>();
+		
+		
 		spinnerTimeout = new Spinner(group_1, SWT.BORDER);
+		spinnerTimeout.setMaximum(255);
 		spinnerTimeout.setBounds(188, 17, 47, 23);
 		
 		lblTimeout = new Label(group_1, SWT.NONE);
@@ -174,13 +185,70 @@ public class HighSerialDemo {
 		comboDirection = new Combo(group_1, SWT.NONE);
 		comboDirection.setBounds(324, 17, 56, 25);
 		comboDirection.setItems(new String[] {"+x", "-x", "+y", "-y","+z","-z"});
+		comboDirection.select(0);
 		
 		btnSetupTime = new Button(group_1, SWT.NONE);
 		btnSetupTime.setBounds(241, 15, 35, 27);
 		btnSetupTime.setText("设置");
-		
-		textTrayAddress = new Text(group_1, SWT.BORDER);
-		textTrayAddress.setBounds(50, 17, 83, 23);
+		btnSetupTime.addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent e) {
+				String trayaddress = comboTray.getText();
+				if(!btnConnect.getText().equals("连接")){
+					System.out.println(trayaddress+"=删除前的大小："+CacheManager.getCacheSize()+CacheManager.getCacheAllkey());
+					if(trayaddress.trim().equals("")){
+						MessageDialog.openError(shlSerialDemohigh, "Error", "托盘地址设置不规范！");
+						return;
+					}
+					if((trayaddress.length())%2!=0){
+						MessageDialog.openError(shlSerialDemohigh, "Error", "托盘地址设置不规范！");
+						return;
+					}
+					Request req = new Request();
+					req.setHeader(CommonUtil.str2Hex("A5A5A5A5"));
+					req.setCmd(CommonUtil.str2Hex("B3"));
+					req.setTray(CommonUtil.str2Hex(trayaddress));
+					req.setParams(new byte[]{(byte) Integer.parseInt(spinnerTimeout.getText())});
+					try {
+						Response res = conn.readSingle(req);
+						CacheManager.putCache(CommonUtil.toHex(res.getTray()), new Cache());
+						tmpTray = CacheManager.getCacheAllkey();
+						TrayNames = new String[tmpTray.size()];
+						for(int i=0;i<tmpTray.size();i++){
+							TrayNames[i] = tmpTray.get(i);
+						}
+						comboTray.setItems(TrayNames);
+						new Thread(){
+							public void run(){
+								if(!shlSerialDemohigh.getDisplay().isDisposed()){
+									shlSerialDemohigh.getDisplay().syncExec(new Runnable() {	
+										@Override
+										public void run() {
+											text.append("设置托盘超时时间成功！"+"\n");
+											
+										}
+									});
+								}
+							}
+						}.start();
+					} catch (IOException e1) {
+						// TODO Auto-generated catch block
+						//e1.printStackTrace();
+						MessageDialog.openError(shlSerialDemohigh, "Error", "设置时间失败！");
+					} catch (SerialConnectionException e1) {
+						// TODO Auto-generated catch block
+						MessageDialog.openError(shlSerialDemohigh, "Error", "设置时间失败！");
+					} catch (ReceivedException e1) {
+						// TODO Auto-generated catch block
+						MessageDialog.openError(shlSerialDemohigh, "Error", "设置时间失败！");
+					}
+					
+				}else{
+					MessageDialog.openError(shlSerialDemohigh, "Error", "请连接串口！");
+					return;
+				}
+			}
+		});
 		
 		Label lblDirection = new Label(group_1, SWT.NONE);
 		lblDirection.setBounds(295, 20, 29, 17);
@@ -189,35 +257,91 @@ public class HighSerialDemo {
 		btnSetDirection = new Button(group_1, SWT.NONE);
 		btnSetDirection.setText("设置");
 		btnSetDirection.setBounds(386, 15, 35, 27);
-		btnSetupTime.addSelectionListener(new SelectionAdapter() {
+		
+		
+		btnSetDirection.addSelectionListener(new SelectionAdapter() {
 			@Override
 			public void widgetSelected(SelectionEvent e) {
-				String trayaddress = textTrayAddress.getText();
-				System.out.println("trayaddress:"+trayaddress);
-				if(!btnSetupTime.getText().equals("连接")||!trayaddress.trim().equals("")){
-					//String trayaddress = textTrayAddress.getText();
-					System.out.println("trayaddress=:"+trayaddress);
-					String timeout = spinnerTimeout.getText();
-					String direction = comboDirection.getText();
-					String addnum = "00000000000000000000000000000000000000000000000000";
-					CRC16 crc16 = new CRC16();
-					String gettimeout = "A5A5A5A5B3"+timeout+addnum+trayaddress+"0000"+CommonUtil.toHex(crc16.getCrcByte(CommonUtil.str2Hex("A5A5A5A5B3"+timeout+addnum+trayaddress+"0000")));
-					byte[] setup = new byte[gettimeout.length()];
+				String trayaddress = comboTray.getText();
+				if(!btnConnect.getText().equals("连接")){
+					if(trayaddress.trim().equals("")){
+						MessageDialog.openError(shlSerialDemohigh, "Error", "托盘地址设置不规范！");
+						return;
+					}
+					if((trayaddress.length())%2!=0){
+						MessageDialog.openError(shlSerialDemohigh, "Error", "托盘地址设置不规范！");
+						return;
+					}
+					String directionName = comboDirection.getText();
+					Request req = new Request();
+					req.setHeader(CommonUtil.str2Hex("A5A5A5A5"));
+					req.setCmd(CommonUtil.str2Hex("B4"));
+					req.setTray(CommonUtil.str2Hex(trayaddress));
+					int m = comboDirection.getSelectionIndex();
+					switch(m){
+					case 0:
+						req.setParams(new byte[]{0x00});
+						break;
+					case 1:
+						req.setParams(new byte[]{0x10});
+						break;
+					case 2:
+						req.setParams(new byte[]{0x01});
+						break;
+					case 3:
+						req.setParams(new byte[]{0x11});
+						break;
+					case 4:
+						req.setParams(new byte[]{0x02});
+						break;
+					case 5:
+						req.setParams(new byte[]{0x12});
+						break;
+					default:
+						MessageDialog.openError(shlSerialDemohigh, "Error", "无效的方向！");
+						return;
+					   
+					}
 					try {
-						conn.read(setup);
-					} catch (SerialConnectionException e1) {
-						// TODO Auto-generated catch block
-						e1.printStackTrace();
+						final Response res = conn.readSingle(req);
+						CacheManager.putCache(CommonUtil.toHex(res.getTray()), new Cache());
+						tmpTray = CacheManager.getCacheAllkey();
+						TrayNames = new String[tmpTray.size()];
+						for(int i=0;i<tmpTray.size();i++){
+							TrayNames[i] = tmpTray.get(i);
+						}
+						comboTray.setItems(TrayNames);
+						new Thread(){
+							public void run(){
+								if(!shlSerialDemohigh.getDisplay().isDisposed()){
+									shlSerialDemohigh.getDisplay().syncExec(new Runnable() {	
+										@Override
+										public void run() {
+											text.append("设置"+CommonUtil.toHex(res.getTray())+"托盘关闭方向成功！"+"\n");
+											
+										}
+									});
+								}
+							}
+						}.start();
 					} catch (IOException e1) {
 						// TODO Auto-generated catch block
-						e1.printStackTrace();
+						MessageDialog.openError(shlSerialDemohigh, "Error", "设置方向失败！");
+					} catch (SerialConnectionException e1) {
+						// TODO Auto-generated catch block
+						MessageDialog.openError(shlSerialDemohigh, "Error", "设置方向失败！");
+					} catch (ReceivedException e1) {
+						// TODO Auto-generated catch block
+						MessageDialog.openError(shlSerialDemohigh, "Error", "设置方向失败！");
 					}
 					
 				}else{
 					MessageDialog.openError(shlSerialDemohigh, "Error", "请连接串口！");
+					return;
 				}
 			}
 		});
+		
 		
 		text = new Text(shlSerialDemohigh, SWT.BORDER | SWT.V_SCROLL | SWT.MULTI);
 		GridData gd_text = new GridData(SWT.FILL, SWT.FILL, true, false, 1, 2);
@@ -256,24 +380,55 @@ public class HighSerialDemo {
 								String hh = nowdate.substring(6,8);
 								String mm = nowdate.substring(8,10);
 								String ss = nowdate.substring(10,12);
-								String addnum = "000000000000000000000000000000000000";
-								CRC16 crc16 = new CRC16();
-								String routt = r.getResultString();
-								String cd = "A5A5A5A5B1"+yy+"00"+dd+MM+hh+"00"+ss+mm+addnum+routt + CommonUtil.toHex(crc16.getCrcByte(CommonUtil.str2Hex(yy+"00"+dd+MM+hh+"00"+ss+mm+addnum+routt)));
-								byte[] b = new byte[CommonUtil.str2Hex(cd).length];
-								b=CommonUtil.str2Hex(cd).clone();
-                                try {
-                                	System.out.println("TX: " + CommonUtil.toHex(b));
-									conn.read(b);
-								} catch (SerialConnectionException e) {
-									// TODO Auto-generated catch block
-									e.printStackTrace();
+								String tmp = "A5A5A5A5B1"+yy+"00"+dd+MM+hh+"00"+ss+mm;
+								byte[] tmps = new byte[CommonUtil.str2Hex(tmp).length];
+								tmps=CommonUtil.str2Hex(tmp).clone();
+								Request req = new Request();
+								req.setHeader(CommonUtil.str2Hex("A5A5A5A5"));
+								req.setCmd(CommonUtil.str2Hex("B1"));
+								req.setTray(r.getTray());
+								req.setParams(tmps);
+								System.out.println("=="+CommonUtil.toHex(r.getTray()));
+								//TrayNames[]
+								CacheManager.putCache(CommonUtil.toHex(r.getTray()), new Cache());
+								tmpTray = CacheManager.getCacheAllkey();
+								TrayNames = new String[tmpTray.size()];
+								for(int i=0;i<tmpTray.size();i++){
+									TrayNames[i] = tmpTray.get(i);
+								}
+								new Thread(){
+									public void run(){
+										if(!shlSerialDemohigh.getDisplay().isDisposed()){
+											shlSerialDemohigh.getDisplay().syncExec(new Runnable() {	
+												@Override
+												public void run() {
+													comboTray.setItems(TrayNames);
+
+												}
+											});
+										}
+										
+									}
+								}.start();
+								
+								Response rest = new Response();
+								try {
+									rest = conn.readSingle(req);
 								} catch (IOException e) {
 									// TODO Auto-generated catch block
-									e.printStackTrace();
+									MessageDialog.openError(shlSerialDemohigh, "Error", CommonUtil.toHex(rest.getTray())+"路由器请求时间失败！");
+								} catch (SerialConnectionException e) {
+									// TODO Auto-generated catch block
+									MessageDialog.openError(shlSerialDemohigh, "Error", CommonUtil.toHex(rest.getTray())+"路由器请求时间失败！");
+								} catch (ReceivedException e) {
+									// TODO Auto-generated catch block
+									MessageDialog.openError(shlSerialDemohigh, "Error", CommonUtil.toHex(rest.getTray())+"路由器请求时间失败！");
 								}
 								break;
 								
+							}
+							if(status.equals("B3")||status.equals("B4")){
+								continue;
 							}
 							if(!r.checkCrc()){
 								System.out.println("CRC Error for");
@@ -346,7 +501,6 @@ public class HighSerialDemo {
 	private Label lblTimeout;
 	private Combo comboDirection;
 	private Button btnSetupTime;
-	private Text textTrayAddress;
 	private Button btnSetDirection;
 	
 	
