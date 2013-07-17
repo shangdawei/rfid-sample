@@ -300,7 +300,7 @@ public class CommonUtil {
 		int numOfCards = ((res.getResult()[0] & 0xFF) << 8);
 		numOfCards |= (res.getResult()[1] & 0xFF);
 		System.out.println(CommonUtil.toHex(res.getResult()) + "," + numOfCards);*/
-		SimpleDateFormat df = new SimpleDateFormat("yyMMddHHmmss");
+		/*SimpleDateFormat df = new SimpleDateFormat("yyMMddHHmmss");
 		Date now = new Date();
 		System.out.println(df.format(now));
 		String yy = df.format(now).substring(0,2);
@@ -313,9 +313,11 @@ public class CommonUtil {
 		//byte b = new byte();
 		byte[] b = new byte[CommonUtil.str2Hex(cd).length];
 		b=CommonUtil.str2Hex(cd).clone();
-		System.out.println("b="+CommonUtil.toHex(b));
+		System.out.println("b="+CommonUtil.toHex(b));*/  
+	
+           
 		
-	}
+	} 	
 
 	public static byte[] assic2Hex(byte[] assic) throws NumberFormatException , ArrayIndexOutOfBoundsException{
 		byte [] hex = new byte[assic.length / 2];
@@ -330,6 +332,12 @@ public class CommonUtil {
 		return assic2Hex(str.getBytes());
 	}
 	
+	/*public static byte[] int2Hex(int str){
+		byte b = {ox12};
+		byte[] hex = new byte[String.valueOf(str).length()];
+			hex = new byte[]{(byte) str};
+	}*/
+
 	
 	public static boolean gettt(String m){
 		if(m.equals("3"))

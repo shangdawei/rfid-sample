@@ -50,6 +50,7 @@ public class CRC16 {
 		if(crcByte.length != 2 || message.length < 0)
 			return false;
 		byte crc[] = getCrcByte(message);
+		System.out.println(CommonUtil.toHex(crcByte)+"=="+CommonUtil.toHex(crc));
 		if(crc.length != 2)
 			return false;
 		if(crc[0] == crcByte[0] && crc[1] == crcByte[1])
