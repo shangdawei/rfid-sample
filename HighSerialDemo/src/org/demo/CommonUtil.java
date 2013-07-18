@@ -314,7 +314,22 @@ public class CommonUtil {
 		byte[] b = new byte[CommonUtil.str2Hex(cd).length];
 		b=CommonUtil.str2Hex(cd).clone();
 		System.out.println("b="+CommonUtil.toHex(b));*/  
-	
+		String str = "FF";		
+		int i = 0;		int sum = 0;		
+		while (i < str.length()) {			
+			char c = str.charAt(i);			
+			int n = c - '0'; //9以内			
+			if (c >= 'a' && c <= 'f') {				
+				n = c - 'a' + 10;//a-f之间			
+				}			
+			System.out.println("sum:" + sum);			
+			sum = (sum << 4) + n;			
+			System.out.println("i:" + i + "c:" + c + "n:" + n + "sum:" + sum);			
+			i++;		
+			}		
+		    System.out.println(sum);
+			
+		System.out.println("=="+Integer.parseInt("0303", 16));
            
 		
 	} 	

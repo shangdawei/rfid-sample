@@ -248,7 +248,7 @@ public class SerialConnection extends Thread implements
 	 * @throws SerialConnectionException
 	 * @throws IOException
 	 */
-	private void read(Request req) throws SerialConnectionException,
+	public void read(Request req) throws SerialConnectionException,
 			IOException {
 		if (!opened)
 			throw new SerialConnectionException("Serial port was closed!");
@@ -260,14 +260,14 @@ public class SerialConnection extends Thread implements
 	/*
 	 * 发送
 	 */
-
+/*
 	public void read(byte[] cmd) throws SerialConnectionException,
 	  IOException {
 		if (!opened)
 			throw new SerialConnectionException("Serial port was closed!");
 		clearBuffer();
 		os.write(cmd);
-	}
+	} */
 	/*public Response readSeqeratedSingle(Request req)
 			throws SerialConnectionException, IOException, ReceivedException {
 		read(req);

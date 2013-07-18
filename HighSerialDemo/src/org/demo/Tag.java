@@ -126,21 +126,17 @@ public class Tag {
 	}
 	
 	public String getModel1(){
-		System.out.println("model1="+CommonUtil.toHex(model1));
 		return CommonUtil.toHex(model1);
 	}
 	
 	public String getModel2(){
-		System.out.println("mode2="+CommonUtil.toHex(model2));
 		return CommonUtil.toHex(model2);
 	}
 	
 	public String getRouter(){
-		System.out.println("router="+CommonUtil.toHex(router));
 		return CommonUtil.toHex(router);
 	}
 	public String getRandoms(){
-		System.out.println("randoms="+CommonUtil.toHex(randoms));
 		return CommonUtil.toHex(randoms);
 	}
 	private byte[] id = new byte[EPC_LEN];
