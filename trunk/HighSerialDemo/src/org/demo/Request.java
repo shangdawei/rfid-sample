@@ -27,6 +27,7 @@ public class Request extends SerialProtocolBase
       this.crc = crc16.getCrcByte(cmd_params);
      // calcSerial();
       this.protocol = byteCombine(this.header, cmd_params, this.crc );
+      System.out.println("=="+CommonUtil.toHex(protocol));
     }
     return this.protocol;
   }
