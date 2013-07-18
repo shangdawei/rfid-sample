@@ -35,6 +35,7 @@ public class Tag {
 		}
 		for(int i = 0 ; i < EPC_LEN ; i++)
 			id[i] = data[TIME_LEN + i];*/
+		System.out.println("data"+CommonUtil.toHex(data));
 		for(int i = 0; i < EPC_LEN ; i++)
 			id[i] = data[i];
 		for(int i = 0; i < 1 ; i++)//获取年
@@ -63,16 +64,20 @@ public class Tag {
 		for(int i = 0; i < 1 ; i++)//获取秒
 			stoptime[i+5] = data[EPC_LEN+TIME_LEN+8+i];
 		//4为协议中的时间保留位和星期
-		for(int i = 0; i< 2; i++)
-			model1[i] = data[EPC_LEN+TIME_LEN*2+4];
-		for(int i = 0; i< 2; i++)
-			model2[i] = data[EPC_LEN+TIME_LEN*2+MODEL2_LEN+4];
+		for(int i = 0; i< 1; i++)
+			model1[i] = data[EPC_LEN+TIME_LEN*2+4+1+i];
+		for(int i = 0; i< 1; i++)
+			model1[i+1] = data[EPC_LEN+TIME_LEN*2+4+i];
+		for(int i = 0; i< 1; i++)
+			model2[i] = data[EPC_LEN+TIME_LEN*2+MODEL1_LEN+4+1+i];
+		for(int i = 0; i< 1; i++)
+			model2[i+1] = data[EPC_LEN+TIME_LEN*2+MODEL1_LEN+4+i];
 		
 		for(int i = 0 ; i < ROUTER_LEN ; i ++){
-			router[i] = data[EPC_LEN+TIME_LEN*2+4+i];
+			router[i] = data[EPC_LEN+TIME_LEN*2+MODEL1_LEN+MODEL2_LEN+4+i];
 		}
 		for(int i = 0 ; i < RANDOMS_LEN ; i ++){
-			randoms[i] = data[EPC_LEN+ROUTER_LEN+TIME_LEN*2+4+i];
+			randoms[i] = data[EPC_LEN+ROUTER_LEN+TIME_LEN*2+MODEL1_LEN+MODEL2_LEN+4+i];
 		}
 	}
 	public Date getTime(){
@@ -121,17 +126,21 @@ public class Tag {
 	}
 	
 	public String getModel1(){
+		System.out.println("model1="+CommonUtil.toHex(model1));
 		return CommonUtil.toHex(model1);
 	}
 	
 	public String getModel2(){
+		System.out.println("mode2="+CommonUtil.toHex(model2));
 		return CommonUtil.toHex(model2);
 	}
 	
 	public String getRouter(){
+		System.out.println("router="+CommonUtil.toHex(router));
 		return CommonUtil.toHex(router);
 	}
 	public String getRandoms(){
+		System.out.println("randoms="+CommonUtil.toHex(randoms));
 		return CommonUtil.toHex(randoms);
 	}
 	private byte[] id = new byte[EPC_LEN];
