@@ -195,7 +195,6 @@ public class HighSerialDemo {
 			public void widgetSelected(SelectionEvent e) {
 				String trayaddress = comboTray.getText();
 				if(!btnConnect.getText().equals("连接")){
-					System.out.println(trayaddress+"=删除前的大小："+CacheManager.getCacheSize()+CacheManager.getCacheAllkey());
 					if(trayaddress.trim().equals("")){
 						MessageDialog.openError(shlSerialDemohigh, "Error", "托盘地址设置不规范！");
 						return;
@@ -380,7 +379,7 @@ public class HighSerialDemo {
 								String hh = nowdate.substring(6,8);
 								String mm = nowdate.substring(8,10);
 								String ss = nowdate.substring(10,12);
-								String tmp = "A5A5A5A5B1"+yy+"00"+dd+MM+hh+"00"+ss+mm;
+								String tmp = yy+"00"+dd+MM+hh+"00"+ss+mm;
 								byte[] tmps = new byte[CommonUtil.str2Hex(tmp).length];
 								tmps=CommonUtil.str2Hex(tmp).clone();
 								Request req = new Request();
@@ -388,7 +387,7 @@ public class HighSerialDemo {
 								req.setCmd(CommonUtil.str2Hex("B1"));
 								req.setTray(r.getTray());
 								req.setParams(tmps);
-								System.out.println("=="+CommonUtil.toHex(r.getTray()));
+								//System.out.println("=="+CommonUtil.toHex(r.getTray()));
 								//TrayNames[]
 								CacheManager.putCache(CommonUtil.toHex(r.getTray()), new Cache());
 								tmpTray = CacheManager.getCacheAllkey();
@@ -411,19 +410,16 @@ public class HighSerialDemo {
 									}
 								}.start();
 								
-								Response rest = new Response();
 								try {
-									rest = conn.readSingle(req);
-								} catch (IOException e) {
-									// TODO Auto-generated catch block
-									MessageDialog.openError(shlSerialDemohigh, "Error", CommonUtil.toHex(rest.getTray())+"路由器请求时间失败！");
+									conn.read(req);
 								} catch (SerialConnectionException e) {
-									// TODO Auto-generated catch block
-									MessageDialog.openError(shlSerialDemohigh, "Error", CommonUtil.toHex(rest.getTray())+"路由器请求时间失败！");
-								} catch (ReceivedException e) {
-									// TODO Auto-generated catch block
-									MessageDialog.openError(shlSerialDemohigh, "Error", CommonUtil.toHex(rest.getTray())+"路由器请求时间失败！");
+										// TODO Auto-generated catch block
+									MessageDialog.openError(shlSerialDemohigh, "Error", CommonUtil.toHex(r.getTray())+"路由器请求时间失败！");
+								} catch (IOException e) {
+										// TODO Auto-generated catch block
+									MessageDialog.openError(shlSerialDemohigh, "Error", CommonUtil.toHex(r.getTray())+"路由器请求时间失败！");
 								}
+								
 								break;
 								
 							}
@@ -444,8 +440,8 @@ public class HighSerialDemo {
 												text.append("Session: "+tag.getRouter()+"-"+tag.getRandoms()+"\n");
 												text.append("From: "+tag.getDisplayDatetime()+"\n");
 												text.append("To: "+tag.getStoptime()+"\n");
-												text.append("Model-1："+Integer.parseInt(tag.getModel1())+"\n");
-												text.append("Model-2："+Integer.parseInt(tag.getModel2())+"\n");
+												text.append("Model-1："+Integer.parseInt(tag.getModel1(),16)+"\n");
+												text.append("Model-2："+Integer.parseInt(tag.getModel2(),16)+"\n");
 												text.append("Card: "+tag.getId()+"\n\n");
 											}
 										});
